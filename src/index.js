@@ -103,8 +103,75 @@ const userAgents = [
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.1.1 Safari/605.1.15",
 ];
 
-// Extract image URLs from Pinterest page
-async function scrapeImages(url, maxScrolls = 10, scrollDelay = { min: 2000, max: 4000 }) {
+// Download video from URL
+async function downloadVideo(url, filename, retries = 3) {
+  return new Promise((resolve) => {
+    const filepath = path.join(downloadsDir, filename);
+
+    // Skip if already downloaded
+    if (fs.existsSync(filepath)) {
+      console.log(`✓ Already exists`);
+      resolve(true);
+      return;
+    }
+
+    const protocol = url.startsWith("https") ? https : http;
+    const file = fs.createWriteStream(filepath);
+
+    const request = protocol.get(url, { 
+      timeout: 30000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+      }
+    }, (response) => {
+      // Follow redirects
+      if (response.statusCode === 301 || response.statusCode === 302) {
+        file.close();
+        fs.unlinkSync(filepath);
+        if (retries > 0) {
+          downloadVideo(response.headers.location, filename, retries - 1).then(
+            resolve
+          );
+        } else {
+          resolve(false);
+        }
+        return;
+      }
+
+      // Check for valid status code
+      if (response.statusCode !== 200) {
+        file.close();
+        fs.unlinkSync(filepath);
+        console.log(`✗ HTTP ${response.statusCode}`);
+        resolve(false);
+        return;
+      }
+
+      response.pipe(file);
+      file.on("finish", () => {
+        file.close();
+        console.log(`✓ Downloaded`);
+        resolve(true);
+      });
+    });
+
+    request.on("error", (err) => {
+      fs.unlink(filepath, () => {});
+      console.log(`✗ ${err.message}`);
+      resolve(false);
+    });
+
+    request.on("timeout", () => {
+      request.destroy();
+      fs.unlink(filepath, () => {});
+      console.log(`✗ Timeout`);
+      resolve(false);
+    });
+  });
+}
+
+// Extract image and video URLs from Pinterest page
+async function scrapeMedia(url, maxScrolls = 10, scrollDelay = { min: 2000, max: 4000 }) {
   const browser = await chromium.launch({ 
     headless: true,
     args: ['--disable-blink-features=AutomationControlled']
@@ -132,20 +199,22 @@ async function scrapeImages(url, maxScrolls = 10, scrollDelay = { min: 2000, max
       console.warn("⚠️  Network idle timeout, continuing anyway...");
     });
 
-    // Wait for images to load
+    // Wait for media to load
     const initialWait = getRandomDelay(3000, 5000);
-    console.log(`⏸️  Waiting ${initialWait}ms for images to load...`);
+    console.log(`⏸️  Waiting ${initialWait}ms for media to load...`);
     await page.waitForTimeout(initialWait);
 
     const imageUrls = new Set();
+    const videoUrls = new Set();
     let scrollCount = 0;
-    let previousImageCount = 0;
+    let previousMediaCount = 0;
 
-    // Scroll to load more images
+    // Scroll to load more media
     while (scrollCount < maxScrolls) {
-      // Get all image URLs from img tags (multiple selector strategies)
-      const images = await page.evaluate(() => {
+      // Get all image and video URLs
+      const media = await page.evaluate(() => {
         const imgs = [];
+        const vids = [];
         
         // Strategy 1: Direct pinimg sources with highest quality
         document.querySelectorAll("img").forEach((img) => {
@@ -186,14 +255,58 @@ async function scrapeImages(url, maxScrolls = 10, scrollDelay = { min: 2000, max
           }
         });
 
-        // Strategy 3: Check for API-injected data in window object
+        // Strategy 3: Look for video tags and sources
+        document.querySelectorAll("video").forEach((video) => {
+          // Check source elements
+          const sources = video.querySelectorAll("source");
+          sources.forEach((source) => {
+            const src = source.getAttribute('src');
+            if (src && src.length > 50) {
+              vids.push(src);
+            }
+          });
+          
+          // Check video src attribute
+          if (video.src && video.src.length > 50) {
+            vids.push(video.src);
+          }
+        });
+
+        // Strategy 4: Look for iframe embeds
+        document.querySelectorAll("iframe").forEach((iframe) => {
+          const src = iframe.getAttribute('src');
+          if (src && src.includes('video') && src.length > 50) {
+            vids.push(src);
+          }
+        });
+
+        // Strategy 5: Check network requests in window object
+        try {
+          // Look for video URLs in various data attributes
+          document.querySelectorAll("[data-video], [data-mp4], [data-video-url]").forEach((el) => {
+            const videoUrl = el.getAttribute('data-video') || el.getAttribute('data-mp4') || el.getAttribute('data-video-url');
+            if (videoUrl && videoUrl.length > 50) {
+              vids.push(videoUrl);
+            }
+          });
+        } catch (e) {
+          // Ignore
+        }
+
+        // Strategy 6: Check for API-injected data in window object
         if (window.__initialState || window.__INITIAL_STATE__) {
           try {
             const state = window.__initialState || window.__INITIAL_STATE__;
             if (state && typeof state === 'string') {
-              const matches = state.match(/https:\/\/[^"]*pinimg[^"]+/g) || [];
-              matches.forEach(url => {
+              const imgMatches = state.match(/https:\/\/[^"]*pinimg[^"]+/g) || [];
+              imgMatches.forEach(url => {
                 if (url.length > 50) imgs.push(url);
+              });
+              
+              // Look for video URLs
+              const vidMatches = state.match(/https:\/\/[^"]*\.mp4[^"]*/g) || [];
+              vidMatches.forEach(url => {
+                if (url.length > 50) vids.push(url);
               });
             }
           } catch (e) {
@@ -202,30 +315,42 @@ async function scrapeImages(url, maxScrolls = 10, scrollDelay = { min: 2000, max
         }
 
         // Remove duplicates and filter low quality
-        const uniqueUrls = [...new Set(imgs)];
-        return uniqueUrls.filter(url => {
-          if (!url) return false;
-          if (url.includes('/75x75/')) return false; // Skip tiny
-          if (url.includes('/100x/')) return false; // Skip small thumbs
-          if (url === 'null' || url === 'undefined') return false;
-          return url.length > 50;
-        });
+        const uniqueImgs = [...new Set(imgs)];
+        const uniqueVids = [...new Set(vids)];
+        
+        return {
+          images: uniqueImgs.filter(url => {
+            if (!url) return false;
+            if (url.includes('/75x75/')) return false; // Skip tiny
+            if (url.includes('/100x/')) return false; // Skip small thumbs
+            if (url === 'null' || url === 'undefined') return false;
+            return url.length > 50;
+          }),
+          videos: uniqueVids.filter(url => {
+            if (!url) return false;
+            if (url === 'null' || url === 'undefined') return false;
+            return url.length > 50;
+          })
+        };
       });
 
-      images.forEach((img) => imageUrls.add(img));
+      media.images.forEach((img) => imageUrls.add(img));
+      media.videos.forEach((vid) => videoUrls.add(vid));
 
-      const currentCount = imageUrls.size;
-      const newImages = currentCount - previousImageCount;
+      const currentImageCount = imageUrls.size;
+      const currentVideoCount = videoUrls.size;
+      const totalCount = currentImageCount + currentVideoCount;
+      const newMedia = totalCount - previousMediaCount;
 
-      console.log(`📊 Scroll ${scrollCount + 1}/${maxScrolls} - Found ${currentCount} images (${newImages} new)`);
+      console.log(`📊 Scroll ${scrollCount + 1}/${maxScrolls} - Found ${currentImageCount} images & ${currentVideoCount} videos (${newMedia} new)`);
 
-      // If no new images found, break early
-      if (newImages === 0 && scrollCount > 2) {
-        console.log("ℹ️  No new images found, stopping scroll...");
+      // If no new media found, break early
+      if (newMedia === 0 && scrollCount > 2) {
+        console.log("ℹ️  No new media found, stopping scroll...");
         break;
       }
 
-      // Scroll down to load more images
+      // Scroll down to load more media
       await page.evaluate(() => {
         window.scrollBy(0, window.innerHeight);
       });
@@ -236,18 +361,19 @@ async function scrapeImages(url, maxScrolls = 10, scrollDelay = { min: 2000, max
       await page.waitForTimeout(delay);
 
       scrollCount++;
-      previousImageCount = currentCount;
+      previousMediaCount = totalCount;
 
-      // Stop if we have enough images
-      if (currentCount > 100) {
-        console.log("✅ Reached image limit, stopping...");
+      // Stop if we have enough media
+      if (totalCount > 100) {
+        console.log("✅ Reached media limit, stopping...");
         break;
       }
     }
 
     await context.close();
     await browser.close();
-    return Array.from(imageUrls).filter((url) => {
+    
+    const filteredImages = Array.from(imageUrls).filter((url) => {
       try {
         new URL(url);
         return true;
@@ -255,27 +381,39 @@ async function scrapeImages(url, maxScrolls = 10, scrollDelay = { min: 2000, max
         return false;
       }
     });
+
+    const filteredVideos = Array.from(videoUrls).filter((url) => {
+      try {
+        new URL(url);
+        return true;
+      } catch {
+        return false;
+      }
+    });
+
+    return { images: filteredImages, videos: filteredVideos };
   } catch (error) {
     console.error("❌ Scraping error:", error.message);
     await context.close();
     await browser.close();
-    return [];
+    return { images: [], videos: [] };
   }
 }
 
-// Download all images
-async function downloadAllImages(imageUrls, downloadDelay = { min: 500, max: 1500 }) {
-  console.log(`\n📥 Starting download of ${imageUrls.length} images...`);
+// Download all images and videos
+async function downloadAllMedia(imageUrls, videoUrls, downloadDelay = { min: 500, max: 1500 }) {
+  console.log(`\n📥 Starting download of ${imageUrls.length} images & ${videoUrls.length} videos...`);
   console.log("⚠️  Rate limiting enabled to avoid bans\n");
 
   let successCount = 0;
   let failCount = 0;
 
+  // Download images
   for (let i = 0; i < imageUrls.length; i++) {
     const url = imageUrls[i];
     const filename = `image_${i + 1}_${Date.now()}.jpg`;
 
-    process.stdout.write(`[${i + 1}/${imageUrls.length}] Downloading... `);
+    process.stdout.write(`[IMG ${i + 1}/${imageUrls.length}] Downloading... `);
     const success = await downloadImage(url, filename);
     if (success) {
       successCount++;
@@ -290,9 +428,29 @@ async function downloadAllImages(imageUrls, downloadDelay = { min: 500, max: 150
     }
   }
 
+  // Download videos
+  for (let i = 0; i < videoUrls.length; i++) {
+    const url = videoUrls[i];
+    const filename = `video_${i + 1}_${Date.now()}.mp4`;
+
+    process.stdout.write(`[VID ${i + 1}/${videoUrls.length}] Downloading... `);
+    const success = await downloadVideo(url, filename);
+    if (success) {
+      successCount++;
+    } else {
+      failCount++;
+    }
+
+    // Random delay between downloads to avoid rate limiting
+    if (i < videoUrls.length - 1) {
+      const delay = getRandomDelay(downloadDelay.min, downloadDelay.max);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
   console.log(`\n✅ Download complete!`);
   console.log(`📊 Success: ${successCount} | Failed: ${failCount}`);
-  console.log(`📁 Images saved to: ${downloadsDir}`);
+  console.log(`📁 Media saved to: ${downloadsDir}`);
 }
 
 // Main function
@@ -312,12 +470,12 @@ async function main() {
   }
 
   for (const url of pinURLs) {
-    const imageUrls = await scrapeImages(url);
+    const media = await scrapeMedia(url);
 
-    if (imageUrls.length > 0) {
-      await downloadAllImages(imageUrls);
+    if (media.images.length > 0 || media.videos.length > 0) {
+      await downloadAllMedia(media.images, media.videos);
     } else {
-      console.log("❌ No images found");
+      console.log("❌ No media found");
     }
   }
 }

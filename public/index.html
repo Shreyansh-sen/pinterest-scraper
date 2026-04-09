@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pinterest Media Scraper</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1>📌 Pinterest Media Scraper</h1>
+                <p>Scrape and download Pinterest images & videos easily</p>
+            </div>
+        </header>
+
+        <!-- Search Section -->
+        <section class="search-section">
+            <div class="search-container">
+                <input 
+                    type="text" 
+                    id="urlInput" 
+                    class="url-input" 
+                    placeholder="Enter Pinterest URL (e.g., https://pinterest.com/your-username/board-name/)"
+                    autocomplete="off"
+                >
+                <button id="scrapeBtn" class="btn btn-primary">Scrape Media</button>
+            </div>
+            <div class="help-text">
+                💡 Paste any Pinterest board or search URL and press Scrape
+            </div>
+        </section>
+
+        <!-- Loading State -->
+        <div id="loadingContainer" class="loading-container hidden">
+            <div class="spinner"></div>
+            <p id="loadingText">Scanning Pinterest board...</p>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorContainer" class="error-container hidden">
+            <p id="errorText"></p>
+            <button class="btn btn-secondary" onclick="closeError()">Close</button>
+        </div>
+
+        <!-- Videos Section -->
+        <section id="videosSection" class="media-section hidden">
+            <div class="section-header">
+                <div class="header-left">
+                    <h2>🎬 Found <span id="videoCount">0</span> Videos</h2>
+                    <button id="selectAllVideosBtn" class="btn btn-secondary">Select All</button>
+                </div>
+                <div class="header-right">
+                    <span id="selectedVideosCount" class="selected-count">0 selected</span>
+                </div>
+            </div>
+            <div id="videosGrid" class="media-grid"></div>
+        </section>
+
+        <!-- Images Grid -->
+        <section id="imagesSection" class="media-section hidden">
+            <div class="section-header">
+                <div class="header-left">
+                    <h2>🖼️ Found <span id="imageCount">0</span> Images</h2>
+                    <button id="selectAllBtn" class="btn btn-secondary">Select All</button>
+                </div>
+                <div class="header-right">
+                    <span id="selectedCount" class="selected-count">0 selected</span>
+                </div>
+            </div>
+            <div id="imagesGrid" class="media-grid"></div>
+        </section>
+
+        <!-- Download Selected Button -->
+        <section id="downloadSection" class="download-section hidden">
+            <button id="downloadSelectedBtn" class="btn btn-success btn-large">Download Selected Media</button>
+        </section>
+
+        <!-- Download Stats -->
+        <section id="statsSection" class="stats-section hidden">
+            <div class="stats-card">
+                <div class="stat">
+                    <span class="stat-label">Downloaded</span>
+                    <span class="stat-value" id="downloadedCount">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Failed</span>
+                    <span class="stat-value" id="failedCount">0</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Total</span>
+                    <span class="stat-value" id="totalCount">0</span>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Media Preview Modal -->
+    <div id="previewModal" class="modal hidden">
+        <div class="modal-content modal-large">
+            <button class="close-btn" onclick="closePreview()">✕</button>
+            <div id="previewContainer">
+                <img id="previewImage" src="" alt="Preview" class="hidden">
+                <video id="previewVideo" controls class="hidden"></video>
+            </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
