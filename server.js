@@ -8,6 +8,10 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const workspaceRoot = path.resolve(__dirname, "..");
+const sharedOutputsDir = path.join(workspaceRoot, "shared_outputs");
+const generatedVideosDir = path.join(sharedOutputsDir, "generated_videos");
+const wallpaperPipelineUrl = process.env.WALLPAPER_PIPELINE_URL || "http://127.0.0.1:2000";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,11 +20,16 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/downloads", express.static(path.join(__dirname, "downloads")));
+app.use("/generated-videos", express.static(generatedVideosDir));
 
 // Create downloads directory if it doesn't exist
 const downloadsDir = path.join(__dirname, "downloads");
 if (!fs.existsSync(downloadsDir)) {
   fs.mkdirSync(downloadsDir, { recursive: true });
+}
+
+if (!fs.existsSync(generatedVideosDir)) {
+  fs.mkdirSync(generatedVideosDir, { recursive: true });
 }
 
 // Download image from URL
@@ -367,6 +376,35 @@ app.post("/api/download", async (req, res) => {
     }
   } catch (error) {
     console.error("Download error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/generate-videos", async (req, res) => {
+  try {
+    const imageUrls = req.body?.imageUrls || req.body?.image_urls || [];
+
+    if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
+      return res.status(400).json({ error: "imageUrls must be a non-empty array" });
+    }
+
+    const response = await fetch(`${wallpaperPipelineUrl}/api/batch-generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ image_urls: imageUrls }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: data.error || "Failed to generate videos" });
+    }
+
+    res.json(data);
+  } catch (error) {
+    console.error("Generate videos error:", error);
     res.status(500).json({ error: error.message });
   }
 });

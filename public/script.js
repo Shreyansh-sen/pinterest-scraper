@@ -1,6 +1,7 @@
 let currentMedia = { images: [], videos: [] };
 let selectedMedia = { images: new Set(), videos: new Set() };
 let currentPreviewData = null;
+let generatedVideos = [];
 
 const urlInput = document.getElementById('urlInput');
 const scrapeBtn = document.getElementById('scrapeBtn');
@@ -15,6 +16,8 @@ const imagesGrid = document.getElementById('imagesGrid');
 const previewModal = document.getElementById('previewModal');
 const downloadModalBtn = document.getElementById('downloadModalBtn');
 const statsSection = document.getElementById('statsSection');
+const generatedVideosSection = document.getElementById('generatedVideosSection');
+const generatedVideosGrid = document.getElementById('generatedVideosGrid');
 
 // Scrape button click handler
 scrapeBtn.addEventListener('click', scrapeMedia);
@@ -145,7 +148,7 @@ function displayMedia() {
     downloadSection.classList.remove('hidden');
     const downloadBtn = document.getElementById('downloadSelectedBtn');
     if (downloadBtn) {
-        downloadBtn.onclick = downloadSelected;
+        downloadBtn.onclick = generateSelectedVideos;
     }
 }
 
@@ -167,6 +170,11 @@ function createMediaCard(url, index, type) {
         `;
     }
 
+    const actionLabel = type === 'image' ? 'Generate Video' : 'Download';
+    const actionHandler = type === 'image'
+        ? `generateSingleVideo(${JSON.stringify(url)}, ${index})`
+        : `downloadSingle(${JSON.stringify(url)}, ${index}, ${JSON.stringify(type)})`;
+
     card.innerHTML = `
         ${thumbnailHTML}
         <div class="media-badge ${type === 'video' ? 'video-badge' : 'image-badge'}">
@@ -176,8 +184,8 @@ function createMediaCard(url, index, type) {
             <input type="checkbox" data-index="${index}" data-type="${type}">
         </div>
         <div class="media-actions">
-            <button class="preview-btn" onclick="previewMedia('${url}', '${type}')">Preview</button>
-            <button class="download-btn" onclick="downloadSingle('${url}', ${index}, '${type}')">Download</button>
+            <button class="preview-btn" onclick='previewMedia(${JSON.stringify(url)}, ${JSON.stringify(type)})'>Preview</button>
+            <button class="download-btn" onclick='${actionHandler}'>${actionLabel}</button>
         </div>
     `;
 
@@ -265,81 +273,99 @@ async function downloadSingle(url, index, type) {
     }
 }
 
-async function downloadSelected() {
-    const total = selectedMedia.images.size + selectedMedia.videos.size;
+async function generateSingleVideo(url, index) {
+    await generateVideos([url], `image-${index}`);
+}
 
-    if (total === 0) {
-        showError('Please select at least one item to download');
+async function generateSelectedVideos() {
+    const imageUrls = Array.from(selectedMedia.images).map((index) => currentMedia.images[index]);
+
+    if (imageUrls.length === 0) {
+        showError('Please select at least one image to generate videos');
         return;
     }
 
-    showLoading(`Downloading ${total} items...`);
+    await generateVideos(imageUrls, 'selected-images');
+}
+
+async function generateVideos(imageUrls, label) {
+    const total = imageUrls.length;
+
+    if (total === 0) {
+        showError('Please select at least one image to generate videos');
+        return;
+    }
+
+    showLoading(`Generating ${total} video${total > 1 ? 's' : ''}...`);
     document.getElementById('downloadSelectedBtn').disabled = true;
     statsSection.classList.remove('hidden');
 
-    let downloaded = 0;
+    let generated = 0;
     let failed = 0;
 
-    // Download selected videos
-    for (const index of selectedMedia.videos) {
-        const url = currentMedia.videos[index];
-        try {
-            const response = await fetch('/api/download', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url, index, type: 'video' })
-            });
+    try {
+        const response = await fetch('/api/generate-videos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ imageUrls })
+        });
 
-            if (response.ok) {
-                const data = await response.json();
-                downloadFile(data.path, data.filename);
-                downloaded++;
-            } else {
-                failed++;
-            }
-        } catch (error) {
-            failed++;
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.error || 'Failed to generate videos');
         }
 
-        updateStats(downloaded, failed, total);
-        await new Promise(resolve => setTimeout(resolve, 300));
-    }
-
-    // Download selected images
-    for (const index of selectedMedia.images) {
-        const url = currentMedia.images[index];
-        try {
-            const response = await fetch('/api/download', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url, index, type: 'image' })
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                downloadFile(data.path, data.filename);
-                downloaded++;
-            } else {
-                failed++;
-            }
-        } catch (error) {
-            failed++;
-        }
-
-        updateStats(downloaded, failed, total);
-        await new Promise(resolve => setTimeout(resolve, 300));
+        generatedVideos = Array.isArray(data.results) ? data.results.filter((item) => item.success) : [];
+        renderGeneratedVideos(generatedVideos);
+        generated = data.generated_count || generatedVideos.length;
+        failed = data.failed_count || 0;
+    } catch (error) {
+        failed = total;
+        showError(`Failed to generate videos: ${error.message}`);
     }
 
     hideLoading();
     document.getElementById('downloadSelectedBtn').disabled = false;
-    updateStats(downloaded, failed, total);
+    updateStats(generated, failed, total);
 }
 
 function updateStats(downloaded, failed, total) {
     document.getElementById('downloadedCount').textContent = downloaded;
     document.getElementById('failedCount').textContent = failed;
     document.getElementById('totalCount').textContent = total;
-    document.getElementById('loadingText').textContent = `Downloading: ${downloaded + failed}/${total}`;
+    document.getElementById('loadingText').textContent = `Generating: ${downloaded + failed}/${total}`;
+}
+
+function renderGeneratedVideos(results) {
+    if (!generatedVideosSection || !generatedVideosGrid) {
+        return;
+    }
+
+    generatedVideosSection.classList.remove('hidden');
+    generatedVideosGrid.innerHTML = '';
+    document.getElementById('generatedVideoCount').textContent = results.length;
+    document.getElementById('generatedVideosSummary').textContent = `${results.length} generated`;
+
+    results.forEach((result, index) => {
+        const videoUrl = result.video_url;
+        const card = document.createElement('div');
+        card.className = 'media-card generated-video-card';
+
+        card.innerHTML = `
+            <video class="media-thumbnail" preload="metadata" muted>
+                <source src="${videoUrl}" type="video/mp4">
+            </video>
+            <div class="media-badge video-badge">🎞️ Generated</div>
+            <div class="generated-video-meta">Video ${index + 1}</div>
+            <div class="media-actions">
+                <button class="preview-btn" onclick='previewMedia(${JSON.stringify(videoUrl)}, "video")'>Preview</button>
+                <button class="download-btn" onclick='downloadFile(${JSON.stringify(videoUrl)}, ${JSON.stringify(`generated-video-${index + 1}.mp4`)})'>Download</button>
+            </div>
+        `;
+
+        generatedVideosGrid.appendChild(card);
+    });
 }
 
 function downloadFile(path, filename) {

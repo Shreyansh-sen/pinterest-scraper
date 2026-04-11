@@ -75,7 +75,20 @@
 
         <!-- Download Selected Button -->
         <section id="downloadSection" class="download-section hidden">
-            <button id="downloadSelectedBtn" class="btn btn-success btn-large">Download Selected Media</button>
+            <button id="downloadSelectedBtn" class="btn btn-success btn-large">Generate Videos for Selected Images</button>
+        </section>
+
+        <!-- Generated Videos Section -->
+        <section id="generatedVideosSection" class="media-section hidden">
+            <div class="section-header">
+                <div class="header-left">
+                    <h2>🎞️ Generated <span id="generatedVideoCount">0</span> Videos</h2>
+                </div>
+                <div class="header-right">
+                    <span id="generatedVideosSummary" class="selected-count">0 generated</span>
+                </div>
+            </div>
+            <div id="generatedVideosGrid" class="media-grid generated-videos-grid"></div>
         </section>
 
         <!-- Download Stats -->
@@ -105,6 +118,7 @@
                 <img id="previewImage" src="" alt="Preview" class="hidden">
                 <video id="previewVideo" controls class="hidden"></video>
             </div>
+        </div>
     </div>
 
     <script src="script.js"></script>
