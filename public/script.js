@@ -18,6 +18,10 @@ const downloadModalBtn = document.getElementById('downloadModalBtn');
 const statsSection = document.getElementById('statsSection');
 const generatedVideosSection = document.getElementById('generatedVideosSection');
 const generatedVideosGrid = document.getElementById('generatedVideosGrid');
+const generatedPreviewPanel = document.getElementById('generatedPreviewPanel');
+const generatedPreviewVideo = document.getElementById('generatedPreviewVideo');
+const generatedPreviewFilename = document.getElementById('generatedPreviewFilename');
+const generatedPreviewDownloadBtn = document.getElementById('generatedPreviewDownloadBtn');
 
 // Scrape button click handler
 scrapeBtn.addEventListener('click', scrapeMedia);
@@ -349,6 +353,7 @@ function renderGeneratedVideos(results) {
 
     results.forEach((result, index) => {
         const videoUrl = result.video_url;
+        const videoName = (videoUrl || '').split('/').pop() || `generated-video-${index + 1}.mp4`;
         const card = document.createElement('div');
         card.className = 'media-card generated-video-card';
 
@@ -359,13 +364,36 @@ function renderGeneratedVideos(results) {
             <div class="media-badge video-badge">🎞️ Generated</div>
             <div class="generated-video-meta">Video ${index + 1}</div>
             <div class="media-actions">
-                <button class="preview-btn" onclick='previewMedia(${JSON.stringify(videoUrl)}, "video")'>Preview</button>
-                <button class="download-btn" onclick='downloadFile(${JSON.stringify(videoUrl)}, ${JSON.stringify(`generated-video-${index + 1}.mp4`)})'>Download</button>
+                <button class="preview-btn" onclick='previewGeneratedVideo(${JSON.stringify(videoUrl)}, ${JSON.stringify(videoName)})'>Preview</button>
+                <button class="download-btn" onclick='downloadFile(${JSON.stringify(videoUrl)}, ${JSON.stringify(videoName)})'>Download</button>
             </div>
         `;
 
         generatedVideosGrid.appendChild(card);
     });
+
+    if (results.length > 0) {
+        const firstUrl = results[0].video_url;
+        const firstName = (firstUrl || '').split('/').pop() || 'generated-video-1.mp4';
+        previewGeneratedVideo(firstUrl, firstName);
+    }
+}
+
+function previewGeneratedVideo(videoUrl, filename) {
+    if (!generatedPreviewPanel || !generatedPreviewVideo || !videoUrl) {
+        return;
+    }
+
+    generatedPreviewPanel.classList.remove('hidden');
+    generatedPreviewVideo.src = videoUrl;
+    generatedPreviewVideo.load();
+    generatedPreviewFilename.textContent = filename || 'generated-video.mp4';
+
+    if (generatedPreviewDownloadBtn) {
+        generatedPreviewDownloadBtn.onclick = () => {
+            downloadFile(videoUrl, filename || 'generated-video.mp4');
+        };
+    }
 }
 
 function downloadFile(path, filename) {

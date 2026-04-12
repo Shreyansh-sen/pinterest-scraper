@@ -332,6 +332,51 @@ body {
     z-index: 2;
 }
 
+.generated-preview-panel {
+    background: #f8fbff;
+    border: 1px solid #d7e6ff;
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 20px;
+}
+
+.generated-preview-panel.hidden {
+    display: none;
+}
+
+.generated-preview-title {
+    margin: 0 0 10px;
+    color: #1f3c88;
+    font-size: 1rem;
+}
+
+.generated-preview-help {
+    margin: 0 0 10px;
+    color: #4b5563;
+    font-size: 0.92rem;
+}
+
+.generated-preview-video {
+    width: 100%;
+    max-height: 520px;
+    background: #000;
+    border-radius: 8px;
+}
+
+.generated-preview-actions {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.generated-preview-filename {
+    color: #495057;
+    font-size: 0.9rem;
+}
+
 .media-status {
     position: absolute;
     top: 10px;
