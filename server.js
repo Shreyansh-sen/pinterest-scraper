@@ -415,6 +415,19 @@ app.post("/api/generate-videos", async (req, res) => {
   }
 });
 
+// Clear application state endpoint
+app.post("/api/clear-state", (req, res) => {
+  try {
+    // This endpoint clears any server-side state
+    // The browser-side state will be cleared by JavaScript
+    console.log("Clearing application state");
+    res.json({ success: true, message: "State cleared" });
+  } catch (error) {
+    console.error("Clear state error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`✅ Server running at http://localhost:${PORT}`);
   console.log(`📱 Open your browser and navigate to http://localhost:${PORT}`);

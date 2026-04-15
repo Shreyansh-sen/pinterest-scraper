@@ -5,6 +5,31 @@ let currentBatchId = null;
 
 const BACKEND_URL = 'http://localhost:2000';
 
+// Clear state on page load to prevent re-generation of previous items
+function clearApplicationState() {
+    currentImages = [];
+    selectedImages.clear();
+    generatedVideos = [];
+    currentBatchId = null;
+    urlInput.value = '';
+    customPromptInput.value = '';
+    imagesGrid.innerHTML = '';
+    generatedVideosGrid.innerHTML = '';
+    
+    // Hide all sections except the initial scrape section
+    imagesSection.classList.add('hidden');
+    promptSection.classList.add('hidden');
+    progressSection.classList.add('hidden');
+    generatedVideosSection.classList.add('hidden');
+    errorContainer.classList.add('hidden');
+    loadingContainer.classList.add('hidden');
+    
+    console.log('Application state cleared');
+}
+
+// Call clearApplicationState when page loads
+window.addEventListener('DOMContentLoaded', clearApplicationState);
+
 // DOM Elements
 const urlInput = document.getElementById('urlInput');
 const scrapeBtn = document.getElementById('scrapeBtn');
