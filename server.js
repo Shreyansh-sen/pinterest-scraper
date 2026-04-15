@@ -208,7 +208,7 @@ async function downloadVideo(url, filename, retries = 3) {
 }
 
 // Scrape images and videos
-async function scrapeMedia(url, maxScrolls = 10) {
+async function scrapeMedia(url, maxScrolls = 5) {
   console.log("🚀 Launching browser");
 
   const browser = await chromium.launch({

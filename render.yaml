@@ -1,12 +1,13 @@
 services:
   - type: web
     name: pinterest-scraper
-    runtime: node
+    runtime: docker # Changed from node to docker
     plan: free
-    buildCommand: npm install
-    startCommand: npm start
+    dockerfilePath: ./pinterst-scraper/Dockerfile
     envVars:
       - key: PORT
         value: 3000
       - key: WALLPAPER_PIPELINE_URL
         value: https://wallpaper-pipeline.onrender.com
+      - key: NODE_ENV
+        value: production
