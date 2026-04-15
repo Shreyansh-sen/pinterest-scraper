@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pinterest Media Scraper</title>
+    <title>Pinterest to Video Generator</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,25 +11,23 @@
         <!-- Header -->
         <header class="header">
             <div class="header-content">
-                <h1>📌 Pinterest Media Scraper</h1>
-                <p>Scrape and download Pinterest images & videos easily</p>
+                <h1>🎬 Pinterest to Video Generator</h1>
+                <p>Generate 2 video variants from Pinterest images with AI</p>
             </div>
         </header>
 
-        <!-- Search Section -->
+        <!-- Step 1: Scrape -->
         <section class="search-section">
+            <h2>Step 1: Scrape Pinterest Board</h2>
             <div class="search-container">
                 <input 
                     type="text" 
                     id="urlInput" 
                     class="url-input" 
-                    placeholder="Enter Pinterest URL (e.g., https://pinterest.com/your-username/board-name/)"
+                    placeholder="Enter Pinterest board URL..."
                     autocomplete="off"
                 >
-                <button id="scrapeBtn" class="btn btn-primary">Scrape Media</button>
-            </div>
-            <div class="help-text">
-                💡 Paste any Pinterest board or search URL and press Scrape
+                <button id="scrapeBtn" class="btn btn-primary">🔍 Scrape</button>
             </div>
         </section>
 
@@ -42,47 +40,80 @@
         <!-- Error Message -->
         <div id="errorContainer" class="error-container hidden">
             <p id="errorText"></p>
-            <button class="btn btn-secondary" onclick="closeError()">Close</button>
+            <button class="btn btn-secondary" onclick="hideError()">Close</button>
         </div>
 
-        <!-- Videos Section -->
-        <section id="videosSection" class="media-section hidden">
-            <div class="section-header">
-                <div class="header-left">
-                    <h2>🎬 Found <span id="videoCount">0</span> Videos</h2>
-                    <button id="selectAllVideosBtn" class="btn btn-secondary">Select All</button>
-                </div>
-                <div class="header-right">
-                    <span id="selectedVideosCount" class="selected-count">0 selected</span>
-                </div>
-            </div>
-            <div id="videosGrid" class="media-grid"></div>
-        </section>
-
-        <!-- Images Grid -->
+        <!-- Step 2: Select Images -->
         <section id="imagesSection" class="media-section hidden">
-            <div class="section-header">
-                <div class="header-left">
-                    <h2>🖼️ Found <span id="imageCount">0</span> Images</h2>
-                    <button id="selectAllBtn" class="btn btn-secondary">Select All</button>
-                </div>
-                <div class="header-right">
-                    <span id="selectedCount" class="selected-count">0 selected</span>
-                </div>
-            </div>
+            <h2>Step 2: Select Images (<span id="imageCount">0</span> found)</h2>
             <div id="imagesGrid" class="media-grid"></div>
         </section>
 
-        <!-- Download Selected Button -->
-        <section id="downloadSection" class="download-section hidden">
-            <button id="downloadSelectedBtn" class="btn btn-success btn-large">Generate Videos for Selected Images</button>
+        <!-- Step 3: Enter Prompt -->
+        <section id="promptSection" class="prompt-section hidden">
+            <h2>Step 3: Enter Custom Prompt</h2>
+            <textarea 
+                id="customPromptInput" 
+                class="prompt-input" 
+                placeholder="Describe what you want the videos to look like. Examples:&#10;- A serene waterfall flowing gently&#10;- Dynamic city lights at night&#10;- Abstract geometric patterns&#10;- Floating bubbles in slow motion"
+                rows="4"
+            ></textarea>
+            <button id="generateBtn" class="btn btn-primary" disabled>🎬 Generate Videos</button>
         </section>
+
+        <!-- Progress Tracking -->
+        <div id="progressSection" class="progress-section hidden">
+            <h2>Generating Videos...</h2>
+            <div class="progress-bar-container">
+                <div id="progressBar" class="progress-bar"></div>
+            </div>
+            <p id="progressText">0 / 0 videos generated</p>
+        </div>
+
+        <!-- Generated Videos -->
+        <section id="generatedVideosSection" class="generated-section hidden">
+            <h2>Generated Videos (<span id="generatedVideoCount">0</span>)</h2>
+            <div id="generatedVideosGrid" class="videos-grid"></div>
+        </section>
+    </div>
+
+    <style>
+        .preview-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .preview-content {
+            position: relative;
+            max-width: 90%;
+            max-height: 90%;
+        }
+        .close-btn {
+            position: absolute;
+            top: -30px;
+            right: 0;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+        }
+    </style>
+
+    <script src="script.js"></script>
+</body>
+</html>
 
         <!-- Generated Videos Section -->
         <section id="generatedVideosSection" class="media-section hidden">
             <div class="section-header">
                 <div class="header-left">
-                    <h2>🎞️ Generated <span id="generatedVideoCount">0</span> Videos</h2>
+                    <h2>🎞️ Generated <span id="generatedVideoCount">0</span> Variant Videos</h2>
                 </div>
                 <div class="header-right">
                     <span id="generatedVideosSummary" class="selected-count">0 generated</span>

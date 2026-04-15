@@ -11,6 +11,7 @@ const __dirname = path.dirname(__filename);
 const workspaceRoot = path.resolve(__dirname, "..");
 const sharedOutputsDir = path.join(workspaceRoot, "shared_outputs");
 const generatedVideosDir = path.join(sharedOutputsDir, "generated_videos");
+const generatedImagesDir = path.join(sharedOutputsDir, "generated_images");
 const wallpaperPipelineUrl = process.env.WALLPAPER_PIPELINE_URL || "http://127.0.0.1:2000";
 
 const app = express();
@@ -21,6 +22,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/downloads", express.static(path.join(__dirname, "downloads")));
 app.use("/generated-videos", express.static(generatedVideosDir));
+app.use("/generated-images", express.static(generatedImagesDir));
 
 // Create downloads directory if it doesn't exist
 const downloadsDir = path.join(__dirname, "downloads");
@@ -30,6 +32,10 @@ if (!fs.existsSync(downloadsDir)) {
 
 if (!fs.existsSync(generatedVideosDir)) {
   fs.mkdirSync(generatedVideosDir, { recursive: true });
+}
+
+if (!fs.existsSync(generatedImagesDir)) {
+  fs.mkdirSync(generatedImagesDir, { recursive: true });
 }
 
 // Download image from URL
