@@ -12,7 +12,8 @@ const workspaceRoot = path.resolve(__dirname, "..");
 const sharedOutputsDir = path.join(workspaceRoot, "shared_outputs");
 const generatedVideosDir = path.join(sharedOutputsDir, "generated_videos");
 const generatedImagesDir = path.join(sharedOutputsDir, "generated_images");
-const wallpaperPipelineUrl = process.env.WALLPAPER_PIPELINE_URL || "http://127.0.0.1:2000";
+const wallpaperPipelineUrl =
+  process.env.WALLPAPER_PIPELINE_URL || "http://127.0.0.1:2000";
 const nodeEnv = process.env.NODE_ENV || "development";
 
 const app = express();
@@ -22,19 +23,19 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
 // Serve index.html with environment variable injection
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   const indexPath = path.join(__dirname, "public", "index.html");
-  let html = fs.readFileSync(indexPath, 'utf8');
-  
+  let html = fs.readFileSync(indexPath, "utf8");
+
   // Inject the wallpaper pipeline URL as a JavaScript global variable
   html = html.replace(
-    '<script>\\s*// Pass server-side environment to client-side JavaScript\\s*const WALLPAPER_PIPELINE_URL = .*?;\\s*</script>',
+    "<script>\\s*// Pass server-side environment to client-side JavaScript\\s*const WALLPAPER_PIPELINE_URL = .*?;\\s*</script>",
     `<script>
         // Pass server-side environment to client-side JavaScript
         const WALLPAPER_PIPELINE_URL = '${wallpaperPipelineUrl}';
-    </script>`
+    </script>`,
   );
-  
+
   res.send(html);
 });
 
@@ -70,44 +71,52 @@ async function downloadImage(url, filename, retries = 3) {
 
     // Upgrade URL to best quality
     let finalUrl = url;
-    if (url.includes('pinimg')) {
-      finalUrl = url.replace(/\/(\d+)x(\d+)\//g, '/orig/')
-                   .replace(/\?.*$/, '');
+    if (url.includes("pinimg")) {
+      finalUrl = url.replace(/\/(\d+)x(\d+)\//g, "/orig/").replace(/\?.*$/, "");
     }
 
     const protocol = finalUrl.startsWith("https") ? https : http;
     const file = fs.createWriteStream(filepath);
 
-    const request = protocol.get(finalUrl, {
-      timeout: 15000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-      }
-    }, (response) => {
-      if (response.statusCode === 301 || response.statusCode === 302) {
-        file.close();
-        fs.unlinkSync(filepath);
-        if (retries > 0) {
-          downloadImage(response.headers.location, filename, retries - 1).then(resolve);
-        } else {
-          resolve(false);
+    const request = protocol.get(
+      finalUrl,
+      {
+        timeout: 15000,
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        },
+      },
+      (response) => {
+        if (response.statusCode === 301 || response.statusCode === 302) {
+          file.close();
+          fs.unlinkSync(filepath);
+          if (retries > 0) {
+            downloadImage(
+              response.headers.location,
+              filename,
+              retries - 1,
+            ).then(resolve);
+          } else {
+            resolve(false);
+          }
+          return;
         }
-        return;
-      }
 
-      if (response.statusCode !== 200) {
-        file.close();
-        if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
-        resolve(false);
-        return;
-      }
+        if (response.statusCode !== 200) {
+          file.close();
+          if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+          resolve(false);
+          return;
+        }
 
-      response.pipe(file);
-      file.on("finish", () => {
-        file.close();
-        resolve(true);
-      });
-    });
+        response.pipe(file);
+        file.on("finish", () => {
+          file.close();
+          resolve(true);
+        });
+      },
+    );
 
     request.on("error", (err) => {
       if (fs.existsSync(filepath)) fs.unlink(filepath, () => {});
@@ -147,36 +156,45 @@ async function downloadVideo(url, filename, retries = 3) {
     const protocol = url.startsWith("https") ? https : http;
     const file = fs.createWriteStream(filepath);
 
-    const request = protocol.get(url, {
-      timeout: 30000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-      }
-    }, (response) => {
-      if (response.statusCode === 301 || response.statusCode === 302) {
-        file.close();
-        fs.unlinkSync(filepath);
-        if (retries > 0) {
-          downloadVideo(response.headers.location, filename, retries - 1).then(resolve);
-        } else {
-          resolve(false);
+    const request = protocol.get(
+      url,
+      {
+        timeout: 30000,
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        },
+      },
+      (response) => {
+        if (response.statusCode === 301 || response.statusCode === 302) {
+          file.close();
+          fs.unlinkSync(filepath);
+          if (retries > 0) {
+            downloadVideo(
+              response.headers.location,
+              filename,
+              retries - 1,
+            ).then(resolve);
+          } else {
+            resolve(false);
+          }
+          return;
         }
-        return;
-      }
 
-      if (response.statusCode !== 200) {
-        file.close();
-        if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
-        resolve(false);
-        return;
-      }
+        if (response.statusCode !== 200) {
+          file.close();
+          if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+          resolve(false);
+          return;
+        }
 
-      response.pipe(file);
-      file.on("finish", () => {
-        file.close();
-        resolve(true);
-      });
-    });
+        response.pipe(file);
+        file.on("finish", () => {
+          file.close();
+          resolve(true);
+        });
+      },
+    );
 
     request.on("error", (err) => {
       if (fs.existsSync(filepath)) fs.unlink(filepath, () => {});
@@ -193,30 +211,42 @@ async function downloadVideo(url, filename, retries = 3) {
 
 // Scrape images and videos
 async function scrapeMedia(url, maxScrolls = 10) {
+  console.log("🚀 Launching browser");
+
   const browser = await chromium.launch({
     headless: true,
     args: [
-      '--disable-blink-features=AutomationControlled',
-      '--no-sandbox',
-      '--disable-setuid-sandbox'
-    ]
+      "--disable-blink-features=AutomationControlled",
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+    ],
   });
+
+  console.log("✅ Browser launched");
 
   const userAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
   const context = await browser.newContext({
     userAgent: userAgent,
     extraHTTPHeaders: {
       "Accept-Language": "en-US,en;q=0.9",
-      "Referer": "https://www.google.com/",
+      Referer: "https://www.google.com/",
     },
-    viewport: { width: 1366, height: 768 }
+    viewport: { width: 1366, height: 768 },
   });
 
   const page = await context.newPage();
 
   try {
-    await page.goto(url, { waitUntil: "networkidle", timeout: 60000 }).catch(() => {});
+    console.log("🌐 Opening URL:", url);
 
+    await page.goto(url, {
+      waitUntil: "domcontentloaded",
+      timeout: 30000,
+    });
+
+    console.log("✅ Page loaded");
     const initialWait = getRandomDelay(3000, 5000);
     await page.waitForTimeout(initialWait);
 
@@ -232,15 +262,18 @@ async function scrapeMedia(url, maxScrolls = 10) {
 
         // Extract images
         document.querySelectorAll("img").forEach((img) => {
-          let src = img.src || img.getAttribute('data-src') || img.getAttribute('srcset');
+          let src =
+            img.src ||
+            img.getAttribute("data-src") ||
+            img.getAttribute("srcset");
 
-          if (src && typeof src === 'string' && src.includes('pinimg')) {
-            src = src.split(' ')[0];
-            src = src.replace(/\/\d+x\d+\//g, '/736x/');
-            if (src.includes('/236x/') || src.includes('/474x/')) {
-              src = src.replace(/\/\d+x\d+\//g, '/1200x/');
+          if (src && typeof src === "string" && src.includes("pinimg")) {
+            src = src.split(" ")[0];
+            src = src.replace(/\/\d+x\d+\//g, "/736x/");
+            if (src.includes("/236x/") || src.includes("/474x/")) {
+              src = src.replace(/\/\d+x\d+\//g, "/1200x/");
             }
-            if (src.length > 50 && !src.includes('null')) {
+            if (src.length > 50 && !src.includes("null")) {
               imgs.push(src);
             }
           }
@@ -249,17 +282,17 @@ async function scrapeMedia(url, maxScrolls = 10) {
         document.querySelectorAll("picture").forEach((picture) => {
           const sources = picture.querySelectorAll("source");
           sources.forEach((source) => {
-            let srcset = source.getAttribute('srcset');
+            let srcset = source.getAttribute("srcset");
             if (srcset) {
-              const urls = srcset.split(',').map(s => s.trim());
-              const bestUrl = urls[urls.length - 1].split(' ')[0];
+              const urls = srcset.split(",").map((s) => s.trim());
+              const bestUrl = urls[urls.length - 1].split(" ")[0];
               if (bestUrl && bestUrl.length > 50) {
                 imgs.push(bestUrl);
               }
             }
           });
 
-          const img = picture.querySelector('img');
+          const img = picture.querySelector("img");
           if (img && img.src && img.src.length > 50) {
             imgs.push(img.src);
           }
@@ -269,7 +302,7 @@ async function scrapeMedia(url, maxScrolls = 10) {
         document.querySelectorAll("video").forEach((video) => {
           const sources = video.querySelectorAll("source");
           sources.forEach((source) => {
-            const src = source.getAttribute('src');
+            const src = source.getAttribute("src");
             if (src && src.length > 50) {
               vids.push(src);
             }
@@ -281,29 +314,34 @@ async function scrapeMedia(url, maxScrolls = 10) {
         });
 
         // Extract videos from data attributes
-        document.querySelectorAll("[data-video], [data-mp4], [data-video-url]").forEach((el) => {
-          const videoUrl = el.getAttribute('data-video') || el.getAttribute('data-mp4') || el.getAttribute('data-video-url');
-          if (videoUrl && videoUrl.length > 50) {
-            vids.push(videoUrl);
-          }
-        });
+        document
+          .querySelectorAll("[data-video], [data-mp4], [data-video-url]")
+          .forEach((el) => {
+            const videoUrl =
+              el.getAttribute("data-video") ||
+              el.getAttribute("data-mp4") ||
+              el.getAttribute("data-video-url");
+            if (videoUrl && videoUrl.length > 50) {
+              vids.push(videoUrl);
+            }
+          });
 
         const uniqueImgs = [...new Set(imgs)];
         const uniqueVids = [...new Set(vids)];
 
         return {
-          images: uniqueImgs.filter(url => {
+          images: uniqueImgs.filter((url) => {
             if (!url) return false;
-            if (url.includes('/75x75/')) return false;
-            if (url.includes('/100x/')) return false;
-            if (url === 'null' || url === 'undefined') return false;
+            if (url.includes("/75x75/")) return false;
+            if (url.includes("/100x/")) return false;
+            if (url === "null" || url === "undefined") return false;
             return url.length > 50;
           }),
-          videos: uniqueVids.filter(url => {
+          videos: uniqueVids.filter((url) => {
             if (!url) return false;
-            if (url === 'null' || url === 'undefined') return false;
+            if (url === "null" || url === "undefined") return false;
             return url.length > 50;
-          })
+          }),
         };
       });
 
@@ -355,9 +393,12 @@ async function scrapeMedia(url, maxScrolls = 10) {
 
     return { images: filteredImages, videos: filteredVideos };
   } catch (error) {
+    console.error("❌ scrapeMedia error:", error);
+
     await context.close();
     await browser.close();
-    return { images: [], videos: [] };
+
+    throw error; // VERY IMPORTANT
   }
 }
 
@@ -371,7 +412,12 @@ app.post("/api/scrape", async (req, res) => {
     }
 
     console.log(`Scraping: ${url}`);
-    const media = await scrapeMedia(url);
+    const media = await Promise.race([
+      scrapeMedia(url),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Scraping timeout")), 30000),
+      ),
+    ]);
 
     if (media.images.length === 0 && media.videos.length === 0) {
       return res.status(404).json({ error: "No images or videos found" });
@@ -392,14 +438,19 @@ app.post("/api/download", async (req, res) => {
       return res.status(400).json({ error: "URL is required" });
     }
 
-    const isVideo = type === 'video';
-    const extension = isVideo ? 'mp4' : 'jpg';
+    const isVideo = type === "video";
+    const extension = isVideo ? "mp4" : "jpg";
     const filename = `${type}_${index}_${Date.now()}.${extension}`;
     const downloadFunc = isVideo ? downloadVideo : downloadImage;
     const success = await downloadFunc(url, filename);
 
     if (success) {
-      res.json({ success: true, filename, path: `/downloads/${filename}`, type });
+      res.json({
+        success: true,
+        filename,
+        path: `/downloads/${filename}`,
+        type,
+      });
     } else {
       res.status(500).json({ error: `Failed to download ${type}` });
     }
@@ -414,21 +465,28 @@ app.post("/api/generate-videos", async (req, res) => {
     const imageUrls = req.body?.imageUrls || req.body?.image_urls || [];
 
     if (!Array.isArray(imageUrls) || imageUrls.length === 0) {
-      return res.status(400).json({ error: "imageUrls must be a non-empty array" });
+      return res
+        .status(400)
+        .json({ error: "imageUrls must be a non-empty array" });
     }
 
-    const response = await fetch(`${wallpaperPipelineUrl}/generate-batch-videos`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const response = await fetch(
+      `${wallpaperPipelineUrl}/generate-batch-videos`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ selected_images: imageUrls }),
       },
-      body: JSON.stringify({ selected_images: imageUrls }),
-    });
+    );
 
     const data = await response.json();
 
     if (!response.ok) {
-      return res.status(response.status).json({ error: data.error || "Failed to generate videos" });
+      return res
+        .status(response.status)
+        .json({ error: data.error || "Failed to generate videos" });
     }
 
     res.json(data);
