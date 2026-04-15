@@ -13,6 +13,7 @@ const sharedOutputsDir = path.join(workspaceRoot, "shared_outputs");
 const generatedVideosDir = path.join(sharedOutputsDir, "generated_videos");
 const generatedImagesDir = path.join(sharedOutputsDir, "generated_images");
 const wallpaperPipelineUrl = process.env.WALLPAPER_PIPELINE_URL || "http://127.0.0.1:2000";
+const nodeEnv = process.env.NODE_ENV || "development";
 
 const app = express();
 const PORT = process.env.PORT || 3000;

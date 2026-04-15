@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: pinterest-scraper
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 3000
+      - key: WALLPAPER_PIPELINE_URL
+        value: https://YOUR_WALLPAPER_SERVICE_URL.onrender.com
