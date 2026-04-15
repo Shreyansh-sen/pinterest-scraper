@@ -28,12 +28,10 @@ app.get("/", (req, res) => {
   let html = fs.readFileSync(indexPath, "utf8");
 
   // Inject the wallpaper pipeline URL as a JavaScript global variable
+  // Use a simpler replacement that handles the template we created
   html = html.replace(
-    "<script>\\s*// Pass server-side environment to client-side JavaScript\\s*const WALLPAPER_PIPELINE_URL = .*?;\\s*</script>",
-    `<script>
-        // Pass server-side environment to client-side JavaScript
-        const WALLPAPER_PIPELINE_URL = '${wallpaperPipelineUrl}';
-    </script>`,
+    /const WALLPAPER_PIPELINE_URL = '[^']*';/,
+    `const WALLPAPER_PIPELINE_URL = '${wallpaperPipelineUrl}';`
   );
 
   res.send(html);
@@ -243,7 +241,7 @@ async function scrapeMedia(url, maxScrolls = 10) {
 
     await page.goto(url, {
       waitUntil: "domcontentloaded",
-      timeout: 30000,
+      timeout: 60000,  // Increased timeout to 60 seconds
     });
 
     console.log("✅ Page loaded");
@@ -415,7 +413,7 @@ app.post("/api/scrape", async (req, res) => {
     const media = await Promise.race([
       scrapeMedia(url),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Scraping timeout")), 30000),
+        setTimeout(() => reject(new Error("Scraping timeout")), 90000),  // Increased to 90 seconds
       ),
     ]);
 
