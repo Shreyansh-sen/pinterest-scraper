@@ -177,7 +177,11 @@ async function downloadVideo(url, filename, retries = 3) {
 async function scrapeMedia(url, maxScrolls = 10) {
   const browser = await chromium.launch({
     headless: true,
-    args: ['--disable-blink-features=AutomationControlled']
+    args: [
+      '--disable-blink-features=AutomationControlled',
+      '--no-sandbox',
+      '--disable-setuid-sandbox'
+    ]
   });
 
   const userAgent = userAgents[Math.floor(Math.random() * userAgents.length)];
