@@ -20,6 +20,24 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
+
+// Serve index.html with environment variable injection
+app.get('/', (req, res) => {
+  const indexPath = path.join(__dirname, "public", "index.html");
+  let html = fs.readFileSync(indexPath, 'utf8');
+  
+  // Inject the wallpaper pipeline URL as a JavaScript global variable
+  html = html.replace(
+    '<script>\\s*// Pass server-side environment to client-side JavaScript\\s*const WALLPAPER_PIPELINE_URL = .*?;\\s*</script>',
+    `<script>
+        // Pass server-side environment to client-side JavaScript
+        const WALLPAPER_PIPELINE_URL = '${wallpaperPipelineUrl}';
+    </script>`
+  );
+  
+  res.send(html);
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/downloads", express.static(path.join(__dirname, "downloads")));
 app.use("/generated-videos", express.static(generatedVideosDir));
@@ -399,12 +417,12 @@ app.post("/api/generate-videos", async (req, res) => {
       return res.status(400).json({ error: "imageUrls must be a non-empty array" });
     }
 
-    const response = await fetch(`${wallpaperPipelineUrl}/api/batch-generate`, {
+    const response = await fetch(`${wallpaperPipelineUrl}/generate-batch-videos`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ image_urls: imageUrls }),
+      body: JSON.stringify({ selected_images: imageUrls }),
     });
 
     const data = await response.json();

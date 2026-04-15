@@ -3,7 +3,15 @@ let selectedImages = new Set();
 let generatedVideos = [];
 let currentBatchId = null;
 
-const BACKEND_URL = 'http://localhost:2000';
+// Configure backend URL - use environment variable or default based on deployment
+const BACKEND_URL = (() => {
+    // If WALLPAPER_PIPELINE_URL is set in environment (for deployed versions)
+    if (typeof WALLPAPER_PIPELINE_URL !== 'undefined') {
+        return WALLPAPER_PIPELINE_URL;
+    }
+    // For local development
+    return 'http://localhost:2000';
+})();
 
 // Clear state on page load to prevent re-generation of previous items
 function clearApplicationState() {

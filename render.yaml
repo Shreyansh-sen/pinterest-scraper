@@ -9,4 +9,4 @@ services:
       - key: PORT
         value: 3000
       - key: WALLPAPER_PIPELINE_URL
-        value: https://YOUR_WALLPAPER_SERVICE_URL.onrender.com
+        value: https://wallpaper-pipeline.onrender.com
